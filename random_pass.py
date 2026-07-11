@@ -10,3 +10,4 @@ for i  in range(len):
     password+=random.choice(all_char)
 print(password)
 
+
