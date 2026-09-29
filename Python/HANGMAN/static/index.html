@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hangman // Cyber Arcade Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-dark">
+  <!-- Background ambient glow effect -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+
+  <!-- Confetti Canvas for Victory Celebration -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <div class="app-layout">
+    <!-- Top Navigation Bar -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <span class="gallows-icon">⚔️</span>
+        </div>
+        <div>
+          <h1 class="brand-title">HANGMAN<span class="accent-dot">.</span></h1>
+          <p class="brand-subtitle">Python Practice Arcade</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- View Toggle: Modern SVG vs Retro ASCII -->
+        <button id="view-mode-btn" class="icon-btn" title="Toggle ASCII Terminal / SVG Vector View" aria-label="Toggle visual mode">
+          <span class="icon">📟</span>
+          <span class="btn-text">ASCII Mode</span>
+        </button>
+
+        <!-- Sound Toggle -->
+        <button id="sound-btn" class="icon-btn" title="Toggle Sound FX" aria-label="Toggle sound">
+          <span class="icon" id="sound-icon">🔊</span>
+        </button>
+
+        <!-- Stats Button -->
+        <button id="stats-btn" class="icon-btn" title="View Statistics" aria-label="View statistics">
+          <span class="icon"></span>
+        </button>
+
+        <!-- Rules / Help Button -->
+        <button id="help-btn" class="icon-btn" title="How to Play" aria-label="How to play">
+          <span class="icon"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Game Section -->
+    <main class="game-container">
+      <!-- Left Column: Visual Hangman & Live Stats -->
+      <section class="visual-panel glass-card">
+        <div class="panel-header">
+          <div class="badge category-badge" id="category-badge">
+            <span class="badge-dot"></span>
+            <span id="current-category-name">Original Cast</span>
+          </div>
+          <div class="difficulty-tag" id="difficulty-tag">MEDIUM</div>
+        </div>
+
+        <!-- SVG Vector Hangman Visualizer -->
+        <div id="svg-stage-container" class="stage-display active">
+          <svg id="hangman-svg" viewBox="0 0 240 260" class="hangman-illustration">
+            <!-- Gallows Structure -->
+            <line x1="30" y1="240" x2="210" y2="240" class="scaffold base" />
+            <line x1="70" y1="240" x2="70" y2="30" class="scaffold pole" />
+            <line x1="70" y1="30" x2="160" y2="30" class="scaffold beam" />
+            <line x1="70" y1="70" x2="110" y2="30" class="scaffold brace" />
+            
+            <!-- Hanging Rope (Mistake 1) -->
+            <line id="svg-rope" x1="160" y1="30" x2="160" y2="70" class="hangman-part rope hidden" />
+            
+            <!-- Head (Mistake 2) -->
+            <circle id="svg-head" cx="160" cy="88" r="18" class="hangman-part body-head hidden" />
+            
+            <!-- Torso (Mistake 3) -->
+            <line id="svg-torso" x1="160" y1="106" x2="160" y2="160" class="hangman-part body-line hidden" />
+            
+            <!-- Left Arm (Mistake 4) -->
+            <line id="svg-arm-left" x1="160" y1="120" x2="130" y2="145" class="hangman-part body-line hidden" />
+            
+            <!-- Right Arm (Mistake 5) -->
+            <line id="svg-arm-right" x1="160" y1="120" x2="190" y2="145" class="hangman-part body-line hidden" />
+            
+            <!-- Left Leg (Mistake 6) -->
+            <line id="svg-leg-left" x1="160" y1="160" x2="135" y2="210" class="hangman-part body-line hidden" />
+            
+            <!-- Right Leg (Mistake 7 / Game Over) -->
+            <line id="svg-leg-right" x1="160" y1="160" x2="185" y2="210" class="hangman-part body-line hidden" />
+          </svg>
+        </div>
+
+        <!-- Retro Monospace CRT ASCII Visualizer (from original hangman.py) -->
+        <div id="ascii-stage-container" class="stage-display terminal-display">
+          <div class="crt-overlay"></div>
+          <div class="terminal-bar">
+            <span class="term-dot red"></span>
+            <span class="term-dot yellow"></span>
+            <span class="term-dot green"></span>
+            <span class="term-title">hangman.py - terminal</span>
+          </div>
+          <pre id="ascii-canvas" class="ascii-art"></pre>
+        </div>
+
+        <!-- Lives / Health Bar -->
+        <div class="lives-section">
+          <div class="lives-header">
+            <span class="lives-label">LIVES REMAINING</span>
+            <span class="lives-counter" id="lives-counter">7 / 7</span>
+          </div>
+          <div class="hearts-row" id="hearts-row">
+            <!-- Rendered reactively via JS -->
+          </div>
+          <div class="health-progress-bar">
+            <div class="health-fill" id="health-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <!-- In-game streak & score pill -->
+        <div class="stats-pills">
+          <div class="stat-pill">
+            <span class="stat-pill-label">STREAK</span>
+            <span class="stat-pill-val" id="pill-streak">0 </span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-pill-label">SCORE</span>
+            <span class="stat-pill-val" id="pill-score">0</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Interactive Word & Keyboard Area -->
+      <section class="play-panel glass-card">
+        <!-- Action bar: Hints, Category dropdown, New game -->
+        <div class="controls-toolbar">
+          <div class="category-select-wrapper">
+            <label for="category-select" class="sr-only">Category</label>
+            <select id="category-select" class="custom-select">
+              <option value="Original Cast">Original Cast (hangman.py)</option>
+              <option value="Tech & Coding">Tech & Coding</option>
+              <option value="World Animals">World Animals</option>
+              <option value="Movies & Pop Culture">Movies & Pop Culture</option>
+              <option value="Space & Science">Space & Science</option>
+            </select>
+          </div>
+
+            <button id="hint-btn" class="secondary-btn" title="Get a clue or reveal a letter (2 hints per round)">
+              <span class="btn-icon">💡</span> <span id="hint-btn-text">Hint (2)</span>
+            </button>
+            <button id="custom-word-btn" class="secondary-btn" title="Set a secret word to challenge someone">
+              <span class="btn-icon"></span> Challenge
+            </button>
+            <button id="new-game-btn" class="primary-btn">
+              <span class="btn-icon">⚡</span> New Word
+            </button>
+          </div>
+        </div>
+
+        <!-- Hint Banner -->
+        <div id="hint-banner" class="hint-banner hidden">
+          <span class="hint-icon"></span>
+          <span id="hint-content" class="hint-text"></span>
+          <button id="close-hint-btn" class="hint-close-btn">&times;</button>
+        </div>
+
+        <!-- Word Display Container -->
+        <div class="word-display-wrapper">
+          <div class="word-meta">
+            <span id="word-length-hint">6 letters</span>
+          </div>
+          <div id="word-slots" class="word-slots">
+            <!-- Reactively populated letter slots -->
+          </div>
+        </div>
+
+        <!-- Incorrect Guesses Strip -->
+        <div class="wrong-letters-section">
+          <span class="wrong-letters-title">MISSED LETTERS:</span>
+          <div id="wrong-letters-list" class="wrong-letters-list">
+            <span class="no-wrong-text">None yet — keep going!</span>
+          </div>
+        </div>
+
+        <!-- Interactive Virtual Keyboard -->
+        <div class="keyboard-container" id="virtual-keyboard">
+          <!-- Reactively generated keyboard rows (QWERTY) -->
+        </div>
+
+        <div class="keyboard-tip">
+          <span>⌨️ Tip: You can also use your physical keyboard to type letters!</span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- End Game Overlay / Modal (Victory / Defeat) -->
+  <div id="result-modal" class="modal-overlay hidden">
+    <div class="modal-card glass-card">
+      <div id="result-icon-badge" class="result-badge win"></div>
+      <h2 id="result-title" class="result-title">VICTORY!</h2>
+      <p id="result-subtitle" class="result-subtitle">YIPPEE!</p>
+
+      <div class="revealed-word-box">
+        <span class="revealed-word-label">THE WORD WAS:</span>
+        <div id="revealed-word-text" class="revealed-word-text">SHURAKA</div>
+      </div>
+
+      <div class="result-stats-grid">
+        <div class="result-stat-item">
+          <span class="val" id="res-score">+250</span>
+          <span class="lbl">Round Score</span>
+        </div>
+        <div class="result-stat-item">
+          <span class="val" id="res-mistakes">2</span>
+          <span class="lbl">Mistakes</span>
+        </div>
+        <div class="result-stat-item">
+          <span class="val" id="res-streak">3 </span>
+          <span class="lbl">Streak</span>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="modal-next-btn" class="primary-btn full-width">
+          Play Next Word ➔
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics Modal -->
+  <div id="stats-modal" class="modal-overlay hidden">
+    <div class="modal-card glass-card">
+      <div class="modal-header">
+        <h3>PLAYER STATISTICS</h3>
+        <button id="close-stats-btn" class="modal-close">&times;</button>
+      </div>
+      <div class="stats-overview-grid">
+        <div class="stat-box">
+          <span class="stat-number" id="stats-played">0</span>
+          <span class="stat-caption">Played</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-number" id="stats-win-rate">0%</span>
+          <span class="stat-caption">Win Rate</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-number" id="stats-current-streak">0</span>
+          <span class="stat-caption">Current Streak</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-number" id="stats-max-streak">0</span>
+          <span class="stat-caption">Best Streak</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="reset-stats-btn" class="secondary-btn">Reset Stats</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- How to Play / Rules Modal -->
+  <div id="help-modal" class="modal-overlay hidden">
+    <div class="modal-card glass-card">
+      <div class="modal-header">
+        <h3>HOW TO PLAY HANGMAN</h3>
+        <button id="close-help-btn" class="modal-close">&times;</button>
+      </div>
+      <div class="help-content">
+        <div class="help-step">
+          <div class="step-num">1</div>
+          <p>Guess the hidden word one letter at a time by clicking the keys or typing on your keyboard.</p>
+        </div>
+        <div class="help-step">
+          <div class="step-num">2</div>
+          <p>Every incorrect guess draws a part of the hangman figure and loses 1 life.</p>
+        </div>
+        <div class="help-step">
+          <div class="step-num">3</div>
+          <p>You have <strong>7 lives</strong>. Guess all letters before the figure is complete to win!</p>
+        </div>
+        <div class="help-step">
+          <div class="step-num">4</div>
+          <p>Toggle <strong>ASCII Mode</strong> in the header to see the exact retro terminal artwork from the original <code>hangman.py</code> file!</p>
+        </div>
+        <div class="help-step">
+          <div class="step-num">5</div>
+          <p>You have <strong>2 hints</strong> per round: <strong>Hint 1</strong> provides a contextual clue, and <strong>Hint 2</strong> reveals a hidden letter.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Word Challenge Modal -->
+  <div id="custom-word-modal" class="modal-overlay hidden">
+    <div class="modal-card glass-card">
+      <div class="modal-header">
+        <h3>CHALLENGE A FRIEND</h3>
+        <button id="close-custom-btn" class="modal-close">&times;</button>
+      </div>
+      <p class="modal-desc">Enter a secret word for someone else to guess:</p>
+      <form id="custom-word-form">
+        <input type="password" id="custom-word-input" class="custom-input" placeholder="Enter word (A-Z only)" autocomplete="off" required pattern="[A-Za-z]+" minlength="3" maxlength="16">
+        <div class="input-helper">Letters only, 3 to 16 characters.</div>
+        <button type="submit" class="primary-btn full-width" style="margin-top: 1rem;">Start Challenge Game</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
